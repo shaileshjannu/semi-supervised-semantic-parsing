@@ -5,7 +5,7 @@ import re
 from language import *
 
 
-def normalize_target(target):
+def clean_target(target):
     target = re.sub(r"([,\(\)])", r" \1 ", target).strip()
     target = re.sub(r"  ", r" ", target)
     return target
@@ -16,7 +16,7 @@ def load_data(filepath):
         s = f.read()
     questions = re.findall('utterance "(.*)"', s)
     targets = re.findall('targetFormula \(string "(.*)"', s)
-    targets = [normalize_target(t) for t in targets]
+    targets = [clean_target(t) for t in targets]
 
     pairs = [(q, t) for q, t in zip(questions, targets)]
     questions = Lang('Questions')
@@ -46,7 +46,7 @@ def variable_from_sentence(lang, sentence, cuda=True):
 def variables_from_pair(pair, lang1, lang2):
     input_variable = variable_from_sentence(lang1, pair[0])
     target_variable = variable_from_sentence(lang2, pair[1])
-    return (input_variable, target_variable)
+    return input_variable, target_variable
 
 
 class TranslationDataset(Dataset):

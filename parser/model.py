@@ -8,6 +8,7 @@ from progressbar import Percentage, Bar, ETA, ProgressBar
 from tensorboardX import SummaryWriter
 
 from common import fix_parentheses
+from inference import beam_search
 from encoder import Encoder
 from decoder import Decoder
 from language import *
@@ -133,35 +134,17 @@ class Model:
                         torch.save(self.decoder, os.path.join(self.log_path, 'decoder'))
                         self.best_acc = acc
 
-    def predict(self, input, max_length=100):
+    def predict(self, input):
         input_variable = variable_from_sentence(self.lang1, input)
 
         # Run through encoder
         encoder_hidden = self.encoder.init_hidden()
         encoder_outputs, encoder_hidden = self.encoder(input_variable, encoder_hidden)
-
-        # Create starting vectors for decoder
-        decoder_input = Variable(torch.LongTensor([[SOS_token]]))  # SOS
-        if self.cuda:
-            decoder_input = decoder_input.cuda()
-
         decoder_hidden = self._hidden_encoder_to_decoder(encoder_hidden)
 
-        decoded_words = []
-
-        # Run through decoder
-        for _ in range(max_length):
-            decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input,
-                                                                             decoder_hidden,
-                                                                             encoder_outputs)
-
-            decoder_input, ni = self._get_next_input(decoder_output)
-            if ni == EOS_token:
-                break
-
-            decoded_words.append(self.lang2.index2word[ni])
-        query = ' '.join(decoded_words)
-        return fix_parentheses(query)
+        query = beam_search(5, self.decoder, decoder_hidden, encoder_outputs, self.lang2)
+        query = fix_parentheses(query)
+        return query
 
     def evaluate(self, pairs):
         corrects = 0
